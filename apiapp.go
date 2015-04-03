@@ -60,16 +60,17 @@ the following files/directories structure:
 }
 
 var apiconf = `appname = {{.Appname}}
-httpport = 8080
+httpport = 9876
 runmode = dev
 autorender = false
 copyrequestbody = true
 EnableDocs = true
+EnableAdmin = true
 `
 var apiMaingo = `package main
 
 import (
-	_ "{{.Appname}}/docs"
+ 
 	_ "{{.Appname}}/routers"
 
 	"github.com/astaxie/beego"
@@ -87,7 +88,7 @@ func main() {
 var apiMainconngo = `package main
 
 import (
-	_ "{{.Appname}}/docs"
+	 
 	_ "{{.Appname}}/routers"
 
 	"github.com/astaxie/beego"
@@ -671,10 +672,10 @@ func checkEnv(appname string) (apppath, packpath string, err error) {
 	}
 	apppath = path.Join(curpath, appname)
 
-	if _, e := os.Stat(apppath); os.IsNotExist(e) == false {
-		err = fmt.Errorf("path `%s` exists, can not create app without remove it\n", apppath)
-		return
-	}
+	//	if _, e := os.Stat(apppath); os.IsNotExist(e) == false {
+	//		err = fmt.Errorf("path `%s` exists, can not create app without remove it\n", apppath)
+	//		return
+	//	}
 	packpath = strings.Join(strings.Split(apppath[len(appsrcpath)+1:], string(path.Separator)), "/")
 	return
 }

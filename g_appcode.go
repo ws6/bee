@@ -736,7 +736,8 @@ func writeModelFiles(tables []*Table, mPath string, selectedTables map[string]bo
 		var err error
 		if isExist(fpath) {
 			ColorLog("[WARN] %v is exist, do you want to overwrite it? Yes or No?\n", fpath)
-			if askForConfirmation() {
+			//			if askForConfirmation() {
+			if true {
 				f, err = os.OpenFile(fpath, os.O_RDWR|os.O_TRUNC, 0666)
 				if err != nil {
 					ColorLog("[WARN] %v\n", err)
@@ -799,7 +800,8 @@ func writeControllerFiles(tables []*Table, cPath string, selectedTables map[stri
 		var err error
 		if isExist(fpath) {
 			ColorLog("[WARN] %v is exist, do you want to overwrite it? Yes or No?\n", fpath)
-			if askForConfirmation() {
+			//			if askForConfirmation() {
+			if true {
 				f, err = os.OpenFile(fpath, os.O_RDWR|os.O_TRUNC, 0666)
 				if err != nil {
 					ColorLog("[WARN] %v\n", err)
@@ -854,7 +856,8 @@ func writeRouterFile(tables []*Table, rPath string, selectedTables map[string]bo
 	var err error
 	if isExist(fpath) {
 		ColorLog("[WARN] %v is exist, do you want to overwrite it? Yes or No?\n", fpath)
-		if askForConfirmation() {
+		//		if askForConfirmation() {
+		if true {
 			f, err = os.OpenFile(fpath, os.O_RDWR|os.O_TRUNC, 0666)
 			if err != nil {
 				ColorLog("[WARN] %v\n", err)
@@ -1031,6 +1034,22 @@ func Get{{modelName}}ById(id int) (v *{{modelName}}, err error) {
 	return nil, err
 }
 
+// Get{{modelName}}ByIdPopulateRelated retrieves {{modelName}} by Id. Returns error if
+// Id doesn't exist populate related fileds
+func Get{{modelName}}ByIdPopulateRelated(id int, names [] string) (v *{{modelName}}, err error) {
+	o := orm.NewOrm()
+	v = &{{modelName}}{Id: id}
+	if err = o.Read(v); err != nil {
+		return nil, err
+	}
+	for _, n := range names{
+		if _, err:= o.LoadRelated(v, n); err != nil{
+			fmt.Println(err) 
+		}
+	}
+	return v, err
+}
+
 // GetAll{{modelName}} retrieves all {{modelName}} matches certain condition. Returns empty list if
 // no records exist
 func GetAll{{modelName}}(query map[string]string, fields []string, sortby []string, order []string,
@@ -1143,7 +1162,8 @@ import (
 	"errors"
 	"strconv"
 	"strings"
-
+	"runtime/debug"
+	"fmt"
 	"github.com/astaxie/beego"
 )
 
@@ -1184,13 +1204,35 @@ func (c *{{ctrlName}}Controller) Post() {
 // @Failure 403 :id is empty
 // @router /:id [get]
 func (c *{{ctrlName}}Controller) GetOne() {
+	defer func() {
+		if err := recover(); err != nil {
+			msg := fmt.Sprintf("%+v\n%s\n", err, debug.Stack())
+			c.CustomAbort(500, msg)
+		}
+	}()
 	idStr := c.Ctx.Input.Params[":id"]
 	id, _ := strconv.Atoi(idStr)
-	v, err := models.Get{{ctrlName}}ById(id)
+	var fields []string
+	if v := c.GetString("populate"); v != "" {
+		fields = strings.Split(v, ",")
+	}
+	var v *models.{{ctrlName}}
+	var err error
+
+	if len(fields) > 0 {
+		v, err = models.Get{{ctrlName}}ByIdPopulateRelated(id, fields)
+	}else{
+		v, err = models.Get{{ctrlName}}ById(id)	
+	}
+	
 	if err != nil {
 		c.Data["json"] = err.Error()
 	} else {
 		c.Data["json"] = v
+	}
+	
+	if err != nil {
+		c.Ctx.ResponseWriter.WriteHeader(404)
 	}
 	c.ServeJson()
 }
